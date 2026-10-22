@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whatsapp-chat-parser"
+version = "0.1.0"
+description = "Parse WhatsApp chat exports into clean, LLM-ready messages"
+requires-python = ">=3.10"
+keywords = ["whatsapp", "chat", "parser", "ollama", "llm"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: General",
+]
+dependencies = []
+
+[project.optional-dependencies]
+summarize = ["ollama>=0.4"]
+
+[project.scripts]
+chat-summarizer = "whatsapp_parser.cli:main"
+
+[tool.setuptools]
+packages = ["whatsapp_parser"]
+
+[tool.setuptools.package-data]
+whatsapp_parser = ["py.typed"]

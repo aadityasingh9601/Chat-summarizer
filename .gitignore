@@ -1,1 +1,12 @@
 venv
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+samples/
+/chat*.txt
+/_chat*.txt
+/*.zip
+/parsed*.json
+/ollama_payload.json

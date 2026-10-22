@@ -98,6 +98,37 @@ class Chat:
     def end(self) -> datetime | None:
         return max((m.timestamp for m in self.messages), default=None)
 
+    def filter_since(self, since: datetime | None) -> "Chat":
+        if since is None:
+            return self
+        filtered = [m for m in self.messages if m.timestamp > since]
+        return Chat(
+            messages=filtered,
+            format=self.format,
+            participants=sorted({m.sender for m in filtered if m.sender}),
+            source=self.source,
+            preamble=self.preamble,
+            skipped_lines=self.skipped_lines,
+            invalid_timestamps=self.invalid_timestamps,
+        )
+
+    def filter_from_date(self, start_date) -> "Chat":
+        if start_date is None:
+            return self
+        filtered = []
+        for m in self.messages:
+            if m.timestamp.date() >= start_date:
+                filtered.append(m)
+        return Chat(
+            messages=filtered,
+            format=self.format,
+            participants=sorted({m.sender for m in filtered if m.sender}),
+            source=self.source,
+            preamble=self.preamble,
+            skipped_lines=self.skipped_lines,
+            invalid_timestamps=self.invalid_timestamps,
+        )
+
     def to_dicts(self) -> list[dict[str, object]]:
         from .render import to_dicts
 

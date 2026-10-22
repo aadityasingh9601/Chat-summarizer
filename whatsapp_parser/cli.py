@@ -1,12 +1,45 @@
 import argparse
 import json
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 from . import DateOrder, dropped_messages, parse_file
+from .state import load_last_summary, save_last_summary
 
 SUBCOMMANDS = ("parse", "summarize", "demo")
 VERSION = "0.1.0"
+
+
+def _date_order(value: str) -> DateOrder | None:
+    return {"auto": None, "day": DateOrder.DAY_FIRST, "month": DateOrder.MONTH_FIRST}[value]
+
+
+def _parse_date(value: str):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        try:
+            return datetime.strptime(value, "%d/%m/%Y").date()
+        except ValueError:
+            try:
+                return datetime.strptime(value, "%m/%d/%Y").date()
+            except ValueError:
+                raise argparse.ArgumentTypeError(f"invalid date: {value} (use YYYY-MM-DD or DD/MM/YYYY)")
+
+
+def _parse_datetime(value: str):
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        pass
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M", "%m/%d/%Y %H:%M"):
+        try:
+            return datetime.strptime(value, fmt)
+        except Exception:
+            continue
+    raise argparse.ArgumentTypeError(f"invalid datetime: {value}")
+
 
 DEFAULT_MODEL = "qwen3:0.6b"
 DEFAULT_MAX_CHARS = 12000
@@ -34,8 +67,30 @@ DEFAULT_TASK = (
 )
 
 
-def _date_order(value: str) -> DateOrder | None:
-    return {"auto": None, "day": DateOrder.DAY_FIRST, "month": DateOrder.MONTH_FIRST}[value]
+def _parse_date(value: str):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        try:
+            return datetime.strptime(value, "%d/%m/%Y").date()
+        except ValueError:
+            try:
+                return datetime.strptime(value, "%m/%d/%Y").date()
+            except ValueError:
+                raise argparse.ArgumentTypeError(f"invalid date: {value} (use YYYY-MM-DD or DD/MM/YYYY)")
+
+
+def _parse_datetime(value: str):
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        pass
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M", "%m/%d/%Y %H:%M"):
+        try:
+            return datetime.strptime(value, fmt)
+        except Exception:
+            continue
+    raise argparse.ArgumentTypeError(f"invalid datetime: {value}")
 
 
 def _write_out(path: str, payload: str) -> None:
@@ -68,10 +123,26 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="keep WhatsApp system events (encryption notices, group changes) in the output",
     )
+    parser.add_argument(
+        "--from-date",
+        type=_parse_date,
+        default=None,
+        help="summarize only messages from this date onward (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--since",
+        type=_parse_datetime,
+        default=None,
+        help="summarize only messages after this datetime (ISO format)",
+    )
 
 
 def cmd_parse(args: argparse.Namespace) -> int:
     chat = parse_file(args.file, date_order=_date_order(args.date_order))
+    if getattr(args, "from_date", None):
+        chat = chat.filter_from_date(args.from_date)
+    if getattr(args, "since", None):
+        chat = chat.filter_since(args.since)
 
     if args.json:
         payload = chat.to_json()
@@ -98,6 +169,24 @@ def cmd_parse(args: argparse.Namespace) -> int:
 def cmd_summarize(args: argparse.Namespace) -> int:
     chat = parse_file(args.file, date_order=_date_order(args.date_order))
 
+    source_key = str(Path(args.file).resolve())
+    since = getattr(args, "since", None)
+    from_date = getattr(args, "from_date", None)
+    auto_since = False
+    if since is None and from_date is None and not getattr(args, "no_auto_since", False):
+        since = load_last_summary(source_key)
+        auto_since = since is not None
+
+    if since is not None:
+        chat = chat.filter_since(since)
+    elif from_date is not None:
+        chat = chat.filter_from_date(from_date)
+
+    if len(chat.messages) == 0:
+        print("Nothing important.", file=sys.stdout)
+        save_last_summary(source_key, datetime.now())
+        return 0
+
     task = args.task or DEFAULT_TASK
     messages = chat.to_ollama_messages(
         style=args.style,
@@ -115,6 +204,8 @@ def cmd_summarize(args: argparse.Namespace) -> int:
         f"({chat.format.describe()})",
         file=sys.stderr,
     )
+    if auto_since and since is not None:
+        print(f"summarizing since last run: {since.isoformat()}", file=sys.stderr)
     if dropped > 0:
         print(
             f"warning: {dropped} of {len(chat.messages)} messages did not fit the "
@@ -165,6 +256,7 @@ def cmd_summarize(args: argparse.Namespace) -> int:
     summary = "".join(chunks).strip()
     if args.save:
         _write_out(args.save, summary + "\n")
+    save_last_summary(source_key, datetime.now())
     return 0
 
 
@@ -247,6 +339,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     summarize_parser.add_argument(
         "--no-stream", action="store_true", help="wait for the full reply instead of streaming"
+    )
+    summarize_parser.add_argument(
+        "--no-auto-since", action="store_true", help="ignore last summary timestamp and summarize all messages"
     )
     summarize_parser.set_defaults(func=cmd_summarize)
 

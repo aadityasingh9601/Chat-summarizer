@@ -5,8 +5,10 @@ build/
 dist/
 *.egg-info/
 samples/
+.chat_summary_state.json
 /chat*.txt
 /_chat*.txt
 /*.zip
 /parsed*.json
 /ollama_payload.json
+

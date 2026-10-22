@@ -18,6 +18,7 @@ from .render import (
     to_ollama_messages,
     to_transcript,
 )
+from .state import load_last_summary, save_last_summary
 
 __all__ = [
     "Chat",
@@ -33,9 +34,11 @@ __all__ = [
     "default_system_prompt",
     "detect_format",
     "dropped_messages",
+    "load_last_summary",
     "parse_file",
     "parse_lines",
     "parse_text",
+    "save_last_summary",
     "to_dicts",
     "to_json",
     "to_ollama_messages",

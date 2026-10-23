@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from . import DateOrder, dropped_messages, parse_file
+from .render import DEFAULT_TASK
 from .state import load_last_summary, save_last_summary
 
 SUBCOMMANDS = ("parse", "summarize", "demo")
@@ -42,29 +43,7 @@ def _parse_datetime(value: str):
 
 
 DEFAULT_MODEL = "qwen3:0.6b"
-DEFAULT_MAX_CHARS = 12000
-DEFAULT_TASK = (
-    "Summarize the supplied WhatsApp group chat messages for me.\n\n"
-    "Prioritize:\n"
-    "- Decisions and changes\n"
-    "- Upcoming events, dates, and deadlines\n"
-    "- Tasks, commitments, and who owns them\n"
-    "- Important questions that remain unanswered\n"
-    "- Announcements that require the user's attention\n"
-    "- Requests or questions aimed at me\n"
-    "- Plans with dates/times\n"
-    "- Deadlines\n\n"
-    "Rules:\n"
-    "- Do not invent facts or infer commitments that were not made.\n"
-    "- Preserve names, dates, times, amounts, and deadlines accurately.\n"
-    "- Merge repeated messages and omit casual chatter, greetings, memes, forwards.\n"
-    "- If nothing important happened, reply exactly: Nothing important.\n"
-    "- Never invent details.\n\n"
-    "Output:\n"
-    "- 2–5 concise bullet points.\n"
-    "- Include the group name as a heading.\n"
-    "- Clearly label action items when applicable."
-)
+DEFAULT_MAX_CHARS = 24000
 
 
 def _parse_date(value: str):
@@ -184,6 +163,8 @@ def cmd_summarize(args: argparse.Namespace) -> int:
 
     if len(chat.messages) == 0:
         print("Nothing important.", file=sys.stdout)
+        if args.save:
+            _write_out(args.save, "Nothing important.\n")
         save_last_summary(source_key, datetime.now())
         return 0
 

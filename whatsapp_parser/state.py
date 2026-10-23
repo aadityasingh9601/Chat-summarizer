@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
 
 def _get_state_path() -> Path:
+    override = os.environ.get("CHAT_SUMMARIZER_STATE")
+    if override:
+        return Path(override)
     return Path(__file__).parent.parent / ".chat_summary_state.json"
 
 

@@ -46,9 +46,30 @@ MEDIA_KEYWORDS: tuple[tuple[re.Pattern[str], MediaKind], ...] = (
 )
 
 MEDIA_PLACEHOLDER = re.compile(
-    r"^(?:<\s*media\s+omitted\s*>|<\s*attached:\s*(?P<attached>.+)>|(?P<named>.+?)\s*\(file attached\))$",
-    re.I,
+    r"^(?:"
+    r"<\s*(?P<tag>media|image|photo|video|audio|voice|sticker|gif|document|contact|location|poll)\s+omitted\s*>"
+    r"|<\s*attached:\s*(?P<attached>.+?)\s*>"
+    r"|(?P<named>.+?)\s*\(file attached\)"
+    r")[\s:;\-]*(?P<rest>.*)$",
+    re.I | re.S,
 )
+
+FORWARDED_TAG = re.compile(r"^\[\s*forwarded(?:\s+many\s+times)?\s*\]\s*", re.I)
+
+TAG_KINDS: dict[str, MediaKind] = {
+    "media": MediaKind.FILE,
+    "image": MediaKind.IMAGE,
+    "photo": MediaKind.IMAGE,
+    "video": MediaKind.VIDEO,
+    "audio": MediaKind.AUDIO,
+    "voice": MediaKind.VOICE,
+    "sticker": MediaKind.STICKER,
+    "gif": MediaKind.GIF,
+    "document": MediaKind.DOCUMENT,
+    "contact": MediaKind.CONTACT,
+    "location": MediaKind.LOCATION,
+    "poll": MediaKind.POLL,
+}
 
 DELETED_PATTERNS = {
     "this message was deleted",
@@ -90,8 +111,37 @@ def _media_kind_from_filename(name: str) -> MediaKind:
     return MediaKind.FILE
 
 
+INLINE_ATTACHED = re.compile(r"<\s*attached:\s*(?P<file>[^>\n]+?)\s*>", re.I)
+INLINE_OMITTED = re.compile(
+    r"<\s*(?P<tag>media|image|photo|video|audio|voice|sticker|gif|document|contact|location|poll)\s+omitted\s*>",
+    re.I,
+)
+
+
+def _replace_inline_media(text: str) -> str:
+    def attached(match: re.Match[str]) -> str:
+        return MEDIA_LABELS[_media_kind_from_filename(match.group("file"))]
+
+    def omitted(match: re.Match[str]) -> str:
+        return MEDIA_LABELS[TAG_KINDS[match.group("tag").lower()]]
+
+    text = INLINE_ATTACHED.sub(attached, text)
+    return INLINE_OMITTED.sub(omitted, text)
+
+
 def classify(body: str) -> tuple[MessageKind, MediaKind | None, str]:
     stripped = body.strip()
+    forwarded = ""
+    forwarded_match = FORWARDED_TAG.match(stripped)
+    if forwarded_match:
+        forwarded = "[forwarded] "
+        stripped = stripped[forwarded_match.end():].strip()
+
+    kind, media_kind, text = _classify_body(stripped)
+    return kind, media_kind, f"{forwarded}{text}".strip()
+
+
+def _classify_body(stripped: str) -> tuple[MessageKind, MediaKind | None, str]:
     lowered = stripped.lower()
 
     if lowered in DELETED_PATTERNS:
@@ -102,15 +152,21 @@ def classify(body: str) -> tuple[MessageKind, MediaKind | None, str]:
 
     media_match = MEDIA_PLACEHOLDER.match(stripped)
     if media_match:
-        filename = media_match.group("attached") or media_match.group("named") or ""
-        kind = _media_kind_from_filename(filename)
-        return MessageKind.MEDIA, kind, MEDIA_LABELS[kind]
+        tag = (media_match.group("tag") or "").lower()
+        if tag:
+            kind = TAG_KINDS[tag]
+        else:
+            filename = media_match.group("attached") or media_match.group("named") or ""
+            kind = _media_kind_from_filename(filename)
+        label = MEDIA_LABELS[kind]
+        caption = (media_match.group("rest") or "").strip()
+        return MessageKind.MEDIA, kind, _replace_inline_media(f"{label} {caption}".strip())
 
     for pattern, keyword_kind in MEDIA_KEYWORDS:
         if pattern.search(stripped):
             return MessageKind.MEDIA, keyword_kind, MEDIA_LABELS[keyword_kind]
 
-    return MessageKind.TEXT, None, body
+    return MessageKind.TEXT, None, _replace_inline_media(stripped)
 
 
 def _looks_like_system(body: str) -> bool:
@@ -137,10 +193,11 @@ class _Builder:
             kind = MessageKind.SYSTEM
         if kind is MessageKind.SYSTEM:
             sender = None
+        cleaned = clean_text(text)
         return Message(
             timestamp=self.timestamp,
             sender=sender,
-            text=clean_text(text),
+            text=cleaned,
             kind=kind,
             media_kind=media_kind,
             raw=raw,

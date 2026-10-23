@@ -1,3 +1,4 @@
 # The parser itself is standard-library only.
-# ollama is needed only for the `summarize` command.
+# ollama is needed for summarization; questionary powers the interactive CLI.
 ollama==0.6.3
+questionary==2.1.1

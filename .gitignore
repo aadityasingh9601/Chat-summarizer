@@ -6,9 +6,14 @@ dist/
 *.egg-info/
 samples/
 .chat_summary_state.json
+/*summary*.txt
+/*summary*.md
 /chat*.txt
 /_chat*.txt
 /*.zip
 /parsed*.json
 /ollama_payload.json
+whatsapp_demo_chats
 
+/*.txt
+*:Zone.Identifier

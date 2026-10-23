@@ -16,6 +16,7 @@ dependencies = []
 
 [project.optional-dependencies]
 summarize = ["ollama>=0.4"]
+interactive = ["ollama>=0.4", "questionary>=2.0"]
 
 [project.scripts]
 chat-summarizer = "whatsapp_parser.cli:main"

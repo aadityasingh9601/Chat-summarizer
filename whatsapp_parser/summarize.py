@@ -48,6 +48,7 @@ def call_ollama(
     *,
     think: bool = False,
     num_ctx: int = NUM_CTX,
+    show_thinking: bool = True,
 ) -> ChatFn:
     """Build a ``chat_fn`` backed by a local Ollama server."""
 
@@ -64,7 +65,7 @@ def call_ollama(
             response = ollama.chat(**kwargs)
             message = response["message"]
             thinking = message.get("thinking")
-            if thinking:
+            if thinking and show_thinking:
                 print(thinking, file=sys.stderr)
             return message.get("content") or ""
 
@@ -72,7 +73,7 @@ def call_ollama(
         for response in ollama.chat(**kwargs, stream=True):
             message = response.get("message", {})
             thinking = message.get("thinking")
-            if thinking:
+            if thinking and show_thinking:
                 print(thinking, end="", file=sys.stderr, flush=True)
             content = message.get("content") or ""
             if content:

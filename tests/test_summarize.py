@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import io
 import unittest
+from contextlib import redirect_stderr
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from whatsapp_parser.models import Chat, ChatFamily, ChatFormat, Clock, DateOrder, Message
-from whatsapp_parser.summarize import MERGE_SYSTEM, NOTHING_IMPORTANT, summarize
+from whatsapp_parser.summarize import (
+    MERGE_SYSTEM,
+    NOTHING_IMPORTANT,
+    call_ollama,
+    summarize,
+)
 
 FORMAT = ChatFormat(
     family=ChatFamily.BRACKET,
@@ -138,6 +146,15 @@ class SummarizeTests(unittest.TestCase):
         chat_fn = FakeChat()
         self.assertEqual(summarize(chat=chat, chat_fn=chat_fn), "Nothing important.")
         self.assertEqual(chat_fn.calls, [])
+
+    def test_call_ollama_hides_thinking_when_requested(self) -> None:
+        response = {"message": {"content": "answer", "thinking": "private reasoning"}}
+        errors = io.StringIO()
+        with patch("ollama.chat", return_value=response) as chat, redirect_stderr(errors):
+            reply = call_ollama("test-model", show_thinking=False)([], None)
+        self.assertEqual(reply, "answer")
+        self.assertEqual(errors.getvalue(), "")
+        self.assertEqual(chat.call_args.kwargs["options"], {"num_ctx": 8192})
 
 
 if __name__ == "__main__":

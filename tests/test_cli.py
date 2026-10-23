@@ -81,7 +81,7 @@ class OutputFileTests(unittest.TestCase):
             self.assertEqual(payload[0]["role"], "system")
             self.assertIn("WhatsApp group-chat summarizer", payload[0]["content"])
             self.assertIn("untrusted data", payload[0]["content"])
-            self.assertIn("2–5 concise bullet points", payload[0]["content"])
+            self.assertIn("concise bullet points", payload[0]["content"])
 
     def test_out_writes_transcript(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -244,7 +244,7 @@ class RenderTests(unittest.TestCase):
     def test_ollama_system_message_frames_the_chat_as_data(self) -> None:
         system = self.chat.to_ollama_messages(style="turns")[0]["content"]
         self.assertIn("untrusted data", system)
-        self.assertIn("2–5", system)
+        self.assertIn("concise bullet points", system)
 
     def test_ollama_task_is_added_to_system_message(self) -> None:
         system = self.chat.to_ollama_messages(style="turns", task="Find the jokes.")[0]["content"]

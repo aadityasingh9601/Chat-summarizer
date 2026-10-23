@@ -3,13 +3,20 @@
 Run ``python main.py`` with no arguments for the interactive flow. Passing
 arguments keeps the original command-line behaviour, so the existing
 ``main(argv)`` entry point still works for scripts and tests.
+
+Optional defaults are read from ``.chat_digest_config.json`` next to this file
+(override with ``CHAT_DIGEST_CONFIG``). Edit that file manually to change the
+default model or folders; the interactive flow never writes to it.
 """
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 import threading
 from datetime import date, datetime
+from functools import partial
 from pathlib import Path
 
 from whatsapp_parser import parse_file
@@ -23,6 +30,30 @@ from whatsapp_parser.summarize import (
 )
 
 SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+CONFIG_FILENAME = ".chat_digest_config.json"
+
+
+def _config_path() -> Path:
+    override = os.environ.get("CHAT_DIGEST_CONFIG")
+    if override:
+        return Path(override).expanduser()
+    return Path(__file__).resolve().parent / CONFIG_FILENAME
+
+
+def _load_defaults() -> dict[str, str]:
+    path = _config_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    defaults: dict[str, str] = {}
+    for key in ("model", "input_folder", "output_folder"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            defaults[key] = value.strip()
+    return defaults
 
 
 def _chat_files(folder: Path) -> list[Path]:
@@ -79,8 +110,8 @@ def _list_models() -> list[str] | None:
     return models
 
 
-def _validate_input_folder(value: str):
-    text = value.strip()
+def _validate_input_folder(value: str, default: str = ""):
+    text = value.strip() or default.strip()
     if not text:
         return "Please enter the folder containing the WhatsApp .txt exports."
     path = Path(text).expanduser()
@@ -91,8 +122,8 @@ def _validate_input_folder(value: str):
     return True
 
 
-def _validate_output_folder(value: str):
-    text = value.strip()
+def _validate_output_folder(value: str, default: str = ""):
+    text = value.strip() or default.strip()
     if not text:
         return "Please enter an output folder."
     path = Path(text).expanduser()
@@ -117,6 +148,14 @@ def _ask(prompt):
         return prompt.ask()
     except (EOFError, KeyboardInterrupt):
         return None
+
+
+def _ask_path(questionary, label: str, default: str, validator):
+    message = f"{label} [{default}]:" if default else f"{label}:"
+    answer = _ask(questionary.path(message, only_directories=True, validate=validator))
+    if answer is None:
+        return None
+    return answer.strip() or default
 
 
 class _Spinner:
@@ -173,17 +212,32 @@ def interactive() -> int:
         )
         return 1
 
-    model = _ask(questionary.select("Select an Ollama model:", choices=models))
+    defaults = _load_defaults()
+    saved_model = defaults.get("model")
+    model_default = saved_model if saved_model in models else None
+    if saved_model and model_default is None:
+        print(
+            f"Default model {saved_model!r} is not installed; pick another.",
+            file=sys.stderr,
+        )
+
+    model = _ask(
+        questionary.select(
+            "Select an Ollama model:",
+            choices=models,
+            default=model_default,
+        )
+    )
     if not model:
         print("Cancelled.", file=sys.stderr)
         return 1
 
-    folder = _ask(
-        questionary.path(
-            "Folder containing WhatsApp .txt exports:",
-            only_directories=True,
-            validate=_validate_input_folder,
-        )
+    input_default = defaults.get("input_folder", "")
+    folder = _ask_path(
+        questionary,
+        "Folder containing WhatsApp .txt exports",
+        input_default,
+        partial(_validate_input_folder, default=input_default),
     )
     if not folder:
         print("Cancelled.", file=sys.stderr)
@@ -216,19 +270,18 @@ def interactive() -> int:
             if saved is not None:
                 since_by_file[path] = saved
 
-    output = _ask(
-        questionary.path(
-            "Output folder for the digest:",
-            default=str(input_dir),
-            only_directories=True,
-            validate=_validate_output_folder,
-        )
+    output_default = defaults.get("output_folder") or str(input_dir)
+    output = _ask_path(
+        questionary,
+        "Output folder for the digest",
+        output_default,
+        partial(_validate_output_folder, default=output_default),
     )
     if output is None:
         print("Cancelled.", file=sys.stderr)
         return 1
 
-    output_dir = Path(output.strip() or str(input_dir)).expanduser()
+    output_dir = Path(output or str(input_dir)).expanduser()
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:

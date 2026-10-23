@@ -6,6 +6,7 @@ dist/
 *.egg-info/
 samples/
 .chat_summary_state.json
+.chat_digest_config.json
 /*summary*.txt
 /*summary*.md
 /chat*.txt

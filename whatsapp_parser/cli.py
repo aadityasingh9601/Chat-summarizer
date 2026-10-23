@@ -4,8 +4,7 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-from . import DateOrder, dropped_messages, parse_file
-from .render import DEFAULT_TASK
+from . import DateOrder, dropped_messages, parse_file, summarize
 from .state import load_last_summary, save_last_summary
 
 SUBCOMMANDS = ("parse", "summarize", "demo")
@@ -42,8 +41,9 @@ def _parse_datetime(value: str):
     raise argparse.ArgumentTypeError(f"invalid datetime: {value}")
 
 
-DEFAULT_MODEL = "qwen3:0.6b"
-DEFAULT_MAX_CHARS = 24000
+DEFAULT_MODEL = "qwen3:1.7b"
+DEFAULT_MAX_CHARS = summarize.DEFAULT_MAX_CHARS
+DEFAULT_OVERLAP_CHARS = summarize.DEFAULT_OVERLAP_CHARS
 
 
 def _parse_date(value: str):
@@ -146,6 +146,13 @@ def cmd_parse(args: argparse.Namespace) -> int:
 
 
 def cmd_summarize(args: argparse.Namespace) -> int:
+    if args.max_chars <= 0:
+        print("error: --max-chars must be positive", file=sys.stderr)
+        return 2
+    if args.overlap_chars < 0:
+        print("error: --overlap-chars cannot be negative", file=sys.stderr)
+        return 2
+
     chat = parse_file(args.file, date_order=_date_order(args.date_order))
 
     source_key = str(Path(args.file).resolve())
@@ -168,18 +175,6 @@ def cmd_summarize(args: argparse.Namespace) -> int:
         save_last_summary(source_key, datetime.now())
         return 0
 
-    task = args.task or DEFAULT_TASK
-    messages = chat.to_ollama_messages(
-        style=args.style,
-        include_system=args.include_system,
-        max_chars=args.max_chars,
-        task=task,
-    )
-
-    kept = len(chat.messages) - dropped_messages(
-        chat, style=args.style, include_system=args.include_system, max_chars=args.max_chars
-    )
-    dropped = len(chat.messages) - kept
     print(
         f"parsed {len(chat.messages)} messages, {len(chat.participants)} participants "
         f"({chat.format.describe()})",
@@ -187,25 +182,46 @@ def cmd_summarize(args: argparse.Namespace) -> int:
     )
     if auto_since and since is not None:
         print(f"summarizing since last run: {since.isoformat()}", file=sys.stderr)
-    if dropped > 0:
-        print(
-            f"warning: {dropped} of {len(chat.messages)} messages did not fit the "
-            f"{args.max_chars} character budget and were omitted",
-            file=sys.stderr,
+
+    if args.no_chunk:
+        dropped = dropped_messages(
+            chat,
+            style=args.style,
+            include_system=args.include_system,
+            max_chars=args.max_chars,
         )
+        if dropped > 0:
+            print(
+                f"warning: {dropped} of {len(chat.messages)} messages did not fit the "
+                f"{args.max_chars} character budget and were omitted",
+                file=sys.stderr,
+            )
 
     try:
-        import ollama
+        chat_fn = summarize.call_ollama(args.model, think=args.think)
     except ImportError:
         print("error: the ollama package is not installed (pip install ollama)", file=sys.stderr)
         return 3
 
+    def on_progress(message: str) -> None:
+        print(message, file=sys.stderr)
+
+    on_token = None
+    if not args.no_stream:
+        on_token = lambda token: print(token, end="", flush=True)  # noqa: E731
+
     try:
-        response = ollama.chat(
-            model=args.model,
-            messages=messages,
-            stream=not args.no_stream,
-            think=True if args.think else None,
+        text = summarize.summarize(
+            chat,
+            chat_fn,
+            max_chars=args.max_chars,
+            overlap_chars=args.overlap_chars,
+            style=args.style,
+            include_system=args.include_system,
+            task=args.task,
+            chunk=not args.no_chunk,
+            on_progress=on_progress,
+            on_token=on_token,
         )
     except Exception as exc:
         print(
@@ -215,28 +231,14 @@ def cmd_summarize(args: argparse.Namespace) -> int:
         )
         return 3
 
-    chunks: list[str] = []
-    if args.no_stream:
-        message = response["message"]
-        if message.get("thinking"):
-            print(message["thinking"], file=sys.stderr)
-        content = message.get("content") or ""
-        chunks.append(content)
-        print(content)
+    text = text.strip()
+    if on_token is None:
+        print(text)
     else:
-        for part in response:
-            message = part.get("message", {})
-            if message.get("thinking"):
-                print(message["thinking"], end="", file=sys.stderr, flush=True)
-            content = message.get("content")
-            if content:
-                chunks.append(content)
-                print(content, end="", flush=True)
-    print()
+        print()
 
-    summary = "".join(chunks).strip()
     if args.save:
-        _write_out(args.save, summary + "\n")
+        _write_out(args.save, text + "\n")
     save_last_summary(source_key, datetime.now())
     return 0
 
@@ -305,7 +307,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-chars",
         type=int,
         default=DEFAULT_MAX_CHARS,
-        help=f"character budget for the chat payload (default: {DEFAULT_MAX_CHARS})",
+        help=(
+            "character budget per LLM call; longer chats are split into chunks "
+            f"(default: {DEFAULT_MAX_CHARS})"
+        ),
+    )
+    summarize_parser.add_argument(
+        "--overlap-chars",
+        type=int,
+        default=DEFAULT_OVERLAP_CHARS,
+        help=(
+            "characters of the previous chunk repeated at the start of each chunk "
+            f"(default: {DEFAULT_OVERLAP_CHARS})"
+        ),
+    )
+    summarize_parser.add_argument(
+        "--no-chunk",
+        action="store_true",
+        help="summarize in a single call, truncating anything beyond --max-chars",
     )
     summarize_parser.add_argument(
         "--task",

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from .models import Chat, Clock, MessageKind
+from .models import Chat, Clock, Message, MessageKind
 
 
 def _time_format(clock: Clock) -> str:
@@ -44,6 +44,17 @@ def _indent(text: str) -> str:
     return text.replace("\n", "\n    ")
 
 
+def render_message_line(message: Message, clock: Clock) -> str:
+    """Render one message the same way ``to_transcript`` does.
+
+    Shared with the chunker so size accounting matches the transcript exactly.
+    """
+    time = message.timestamp.strftime(_time_format(clock))
+    if message.sender:
+        return f"{message.sender} ({time}): {_indent(message.text)}"
+    return f"[system {time}] {message.text}"
+
+
 def to_transcript(chat: Chat, include_system: bool = False) -> str:
     clock = chat.format.clock
     lines: list[str] = []
@@ -55,11 +66,7 @@ def to_transcript(chat: Chat, include_system: bool = False) -> str:
         if day != current_day:
             current_day = day
             lines.append(f"=== {day} ===")
-        time = message.timestamp.strftime(_time_format(clock))
-        if message.sender:
-            lines.append(f"{message.sender} ({time}): {_indent(message.text)}")
-        else:
-            lines.append(f"[system {time}] {message.text}")
+        lines.append(render_message_line(message, clock))
     return "\n".join(lines)
 
 
@@ -102,11 +109,11 @@ DEFAULT_TASK = (
     "- If nothing important happened, reply exactly: Nothing important.\n"
     "- Never invent details.\n\n"
     "Output:\n"
-    "- 2–5 concise bullet points.\n"
+    "- 5-6 concise bullet points.\n"
     "- Include the group name as a heading.\n"
     "- Clearly label action items when applicable.\n"
     "- Reply with only the summary: no preamble, no closing remarks, no offers to help.\n"
-    "- Do not add commentary, tips, or extra sections beyond the heading and bullets."
+    "- Do not add useless commentary, tips, or extra sections beyond the heading and bullets."
 )
 
 
@@ -149,11 +156,7 @@ def _transcript_items(chat: Chat, include_system: bool) -> list[tuple[str, bool]
         if day != current_day:
             current_day = day
             items.append((f"=== {day} ===", False))
-        time = message.timestamp.strftime(_time_format(clock))
-        if message.sender:
-            items.append((f"{message.sender} ({time}): {_indent(message.text)}", True))
-        else:
-            items.append((f"[system {time}] {message.text}", True))
+        items.append((render_message_line(message, clock), True))
     return items
 
 

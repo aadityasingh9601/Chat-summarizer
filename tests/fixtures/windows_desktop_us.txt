@@ -1,0 +1,13 @@
+Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+[10/20/26, 3:36:00 PM] Alice created group "Dinner Plan"
+[10/20/26, 3:37:39 PM] Alice: Hey! Are we still on for dinner?
+[10/20/26, 3:38:02 PM] Bob: Yes, 8pm works for me.
+[10/20/26, 3:39:10 PM] Alice: Cool.
+I'll bring dessert.
+[10/20/26, 3:40:00 PM] Bob: <Media omitted>
+[10/20/26, 3:41:15 PM] Alice: Perfect, see you then.
+[10/20/26, 3:42:00 PM] Bob: This message was deleted
+[10/20/26, 3:43:30 PM] Bob: <attached: 00000042-PHOTO-2026-10-20-15-43-30.jpg>
+[10/20/26, 3:44:00 PM] Dr. Strange: Time is a construct.
+[10/20/26, 3:45:00 PM] +1 202-555-0147: is this the place?
+[10/21/26, 9:02:12 AM] Alice: Morning! Did we ever settle the venue?

@@ -78,6 +78,13 @@ class HelperTests(unittest.TestCase):
             shutil.copy(CHAT, filled / "chat.txt")
             self.assertIs(main._validate_input_folder(str(filled)), True)
 
+            zipped = Path(tmp) / "zipped"
+            zipped.mkdir()
+            shutil.copy(CHAT, zipped / "chat.txt")
+            shutil.make_archive(str(zipped / "chat"), "zip", zipped, "chat.txt")
+            (zipped / "chat.txt").unlink()
+            self.assertIs(main._validate_input_folder(str(zipped)), True)
+
     def test_validate_output_folder_rejects_files(self) -> None:
         with TemporaryDirectory() as tmp:
             target = Path(tmp) / "not-a-folder"

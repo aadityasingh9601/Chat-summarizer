@@ -61,7 +61,7 @@ def _chat_files(folder: Path) -> list[Path]:
         path
         for path in folder.iterdir()
         if path.is_file()
-        and path.suffix.lower() == ".txt"
+        and path.suffix.lower() in (".txt", ".zip")
         and not path.name.startswith("._")
     ]
     return sorted(files, key=lambda path: path.name.casefold())
@@ -113,12 +113,14 @@ def _list_models() -> list[str] | None:
 def _validate_input_folder(value: str, default: str = ""):
     text = value.strip() or default.strip()
     if not text:
-        return "Please enter the folder containing the WhatsApp .txt exports."
+        return "Please enter the folder containing the WhatsApp .txt/.zip exports."
     path = Path(text).expanduser()
+    if not path.exists():
+        return "Folder does not exist."
     if not path.is_dir():
-        return f"Folder not found: {path}"
+        return "Please select a folder."
     if not _chat_files(path):
-        return f"No .txt chat files found in {path}"
+        return "No .txt or .zip files present in the folder."
     return True
 
 
@@ -235,7 +237,7 @@ def interactive() -> int:
     input_default = defaults.get("input_folder", "")
     folder = _ask_path(
         questionary,
-        "Folder containing WhatsApp .txt exports",
+        "Folder containing WhatsApp .txt/.zip exports",
         input_default,
         partial(_validate_input_folder, default=input_default),
     )

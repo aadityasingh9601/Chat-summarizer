@@ -1,4 +1,6 @@
 # The parser itself is standard-library only.
 # ollama is needed for summarization; questionary powers the interactive CLI.
+# Playwright is needed for automating chat exports from whatsapp.
 ollama==0.6.3
 questionary==2.1.1
+playwright==1.64.1

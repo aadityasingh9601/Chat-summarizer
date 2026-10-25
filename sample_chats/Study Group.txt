@@ -1,0 +1,44 @@
+Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+[10/20/26, 7:10:05 PM] - Ananya created the group
+[10/20/26, 7:10:09 PM] - Dev joined via invite link
+[10/20/26, 7:10:13 PM] - Meera joined via invite link
+[10/20/26, 7:10:17 PM] - Farhan joined via invite link
+[10/20/26, 7:11:02 PM] - Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them. Tap to learn more.
+[10/20/26, 7:15:40 PM] Ananya: For tomorrow's mock interview, let's revise arrays, hashing, and binary search.
+[10/20/26, 7:16:59 PM] Dev: I'll prepare 5 binary search questions and share them by 9 PM.
+[10/20/26, 7:18:21 PM] Meera: Can someone explain when to use a set versus a map?
+[10/20/26, 7:20:08 PM] Farhan: Set when you only need unique values or membership checks; map when you need a value associated with each key.
+[10/20/26, 7:22:34 PM] Ananya: Nice. I'll prepare a quick hashing cheat sheet.
+[10/20/26, 8:03:19 PM] Dev: Here are the questions:
+1. Find first and last occurrence in a sorted array.
+2. Search in a rotated sorted array.
+3. Find the insertion position.
+4. Find integer square root.
+5. Find the minimum in a rotated array.
+[10/20/26, 8:04:01 PM] Meera: Thanks! I'll solve them before tomorrow morning.
+[10/20/26, 8:04:45 PM] Farhan: Same. Can we start at 8:30 AM instead of 9?
+[10/20/26, 8:05:12 PM] Ananya: 8:30 works for me.
+[10/20/26, 8:06:33 PM] Dev: Works.
+[10/20/26, 8:07:04 PM] Meera: Works for me too.
+[10/20/26, 8:45:20 PM] Ananya: Reminder: please don't just paste solutions. Explain the approach and time complexity.
+[10/20/26, 8:47:06 PM] Farhan: I'll explain the rotated-array solution. It is O(log n) time and O(1) extra space.
+[10/20/26, 9:02:18 PM] Dev: I found a tricky case: duplicates can make the rotated-array search degrade to O(n).
+[10/20/26, 9:03:50 PM] Meera: Is that only when nums[left] == nums[mid] == nums[right]?
+[10/20/26, 9:04:31 PM] Dev: Yes, in that case we may need to shrink both ends.
+[10/21/26, 6:55:04 AM] Meera: I solved 4/5. The integer square root one took longer than expected.
+[10/21/26, 6:56:22 AM] Farhan: I'll share a hint, not the full answer: compare mid with x / mid to avoid overflow.
+[10/21/26, 6:58:19 AM] Ananya: Mock interview moved to 8:30 AM as agreed.
+[10/21/26, 7:01:40 AM] Dev: I can join at 8:40; my bus is delayed.
+[10/21/26, 7:03:02 AM] Ananya: No problem. We'll start with hashing.
+[10/21/26, 7:05:18 AM] Farhan: I have to leave by 9:15 AM, so let's keep each explanation under 10 minutes.
+[10/21/26, 7:07:46 AM] Meera: I'll present binary search first, then.
+[10/21/26, 7:09:01 AM] Ananya: After the mock, everyone should post one thing they got wrong and what they learned.
+[10/21/26, 7:10:33 AM] Dev: Deal.
+[10/21/26, 7:11:28 AM] Meera: Deal.
+[10/21/26, 7:12:17 AM] Farhan: Deal.
+[10/21/26, 7:14:09 AM] Ananya: Here's a deliberately weird message for parser testing:
+Timestamp-looking text: [10/21/26, 7:15:00 AM] should remain part of this message, not start a new one.
+[10/21/26, 7:16:30 AM] Dev: Also test URLs with colons: https://example.com/path?a=1:b=2
+[10/21/26, 7:17:50 AM] Meera: And emoji / Unicode: नमस्ते, café, naïve, 👩🏽‍💻 🚀
+[10/21/26, 7:18:42 AM] Farhan: This message was deleted
+[10/21/26, 7:19:03 AM] Ananya: Good. Don't forget blank lines and multiline messages in the parser tests.

@@ -48,7 +48,7 @@ ollama pull qwen3:1.7b
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium
+playwright install chromium # Only needed if using Option B auto-export.
 ```
 
 **Windows (Command Prompt):**
@@ -56,7 +56,7 @@ playwright install chromium
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium
+playwright install chromium  # Only needed if using Option B auto-export.
 ```
 
 **Windows (PowerShell):**
@@ -64,9 +64,8 @@ playwright install chromium
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-playwright install chromium
+playwright install chromium  # Only needed if using Option B auto-export.
 ```
-*(Only needed if using Option B auto-export.)*
 
 ### 5) Get your WhatsApp chats
 **Option A: Manual (Recommended, safe)**

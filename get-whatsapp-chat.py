@@ -1,7 +1,9 @@
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+import json
 import re
+import sys
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -9,15 +11,31 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 # ---------- Configuration ----------
 
 GROUPS = [
-    {"name": "Aryan Kushwaha", "from_date": "2026-10-10"},
-    {"name": "Nawab", "from_date": "2026-10-23"},
+    {"name": "College group chat", "from_date": "2026-10-10"},
+    {"name": "Study group chat", "from_date": "2026-10-23"},
 ]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 EXPORT_DIR = SCRIPT_DIR / "exports"
 PROFILE_DIR = SCRIPT_DIR / "whatsapp-profile"
+STATE_FILE = SCRIPT_DIR / ".whatsapp_export_state.json"
 
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load_state():
+    try:
+        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(state):
+    try:
+        STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError as exc:
+        print(f"Warning: could not save export state: {exc}", file=sys.stderr)
 
 
 def safe_filename(name):
@@ -28,10 +46,22 @@ def safe_filename(name):
 
 
 
-def export_group(page, group):
+def export_group(page, group, state):
     group_name = group["name"]
-    from_date = date.fromisoformat(group["from_date"])
+    key = group_name.strip().casefold()
+    saved = state.get(key)
+    if saved:
+        try:
+            from_date = date.fromisoformat(saved) + timedelta(days=1)
+        except ValueError:
+            from_date = date.fromisoformat(group["from_date"])
+    else:
+        from_date = date.fromisoformat(group["from_date"])
     to_date = date.today()
+    if from_date > to_date:
+        print(f"\n--- Skipping: {group_name} ---")
+        print("No new days to export (from_date would be after today).")
+        return None
 
     output_file = EXPORT_DIR / f"{safe_filename(group_name)}.zip"
 
@@ -94,11 +124,13 @@ def export_group(page, group):
 
     download = download_info.value
     download.save_as(str(output_file))
-
     print(f"Saved: {output_file}")
+    return to_date
 
 
 with sync_playwright() as p:
+    state = _load_state()
+    updated = False
     context = p.chromium.launch_persistent_context(
         user_data_dir=str(PROFILE_DIR),
         headless=False,
@@ -121,7 +153,12 @@ with sync_playwright() as p:
 
         for index, group in enumerate(GROUPS):
             try:
-                export_group(page, group)
+                end_date = export_group(page, group, state)
+                if end_date is None:
+                    continue
+                key = group["name"].strip().casefold()
+                state[key] = end_date.isoformat()
+                updated = True
                 successful.append(group["name"])
 
             except Exception as exc:
@@ -146,6 +183,9 @@ with sync_playwright() as p:
         print(f"Failed exports: {len(failed)}")
         for name, error in failed:
             print(f"  FAILED: {name} — {error}")
+        if updated:
+            _save_state(state)
+            print(f"\nUpdated {STATE_FILE.name} so next run starts from the next day.")
 
     finally:
         context.close()

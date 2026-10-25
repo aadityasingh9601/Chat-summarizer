@@ -7,6 +7,7 @@ dist/
 samples/
 .chat_summary_state.json
 .chat_digest_config.json
+.whatsapp_export_state.json
 /*summary*.txt
 /*summary*.md
 /chat*.txt

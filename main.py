@@ -160,6 +160,60 @@ def _ask_path(questionary, label: str, default: str, validator):
     return answer.strip() or default
 
 
+def _is_tty() -> bool:
+    try:
+        return sys.stdin.isatty() and sys.stdout.isatty()
+    except Exception:
+        return False
+
+
+class _AutoPrompter:
+    """Non-interactive prompter that returns saved defaults."""
+
+    def __init__(self, defaults: dict[str, str], models: list[str], input_dir_hint: str = ""):
+        self.defaults = defaults
+        self.models = models
+        self.input_dir_hint = input_dir_hint
+
+    def select(self, message, choices=None, default=None, **_kwargs):
+        if default is not None and default in (choices or []):
+            return _Prompt(default)
+        if self.defaults.get("model") in (choices or []):
+            return _Prompt(self.defaults["model"])
+        if choices:
+            return _Prompt(choices[0])
+        raise RuntimeError("No choices available")
+
+    def path(self, message, only_directories=False, validate=None, default=None, **_kwargs):
+        if "input" in message.lower():
+            text = self.defaults.get("input_folder") or default or ""
+        elif "output" in message.lower():
+            text = self.defaults.get("output_folder") or default or ""
+        else:
+            text = default or ""
+        text = str(text).strip()
+        if validate is not None:
+            result = validate(text)
+            if result is not True:
+                raise RuntimeError(str(result))
+        return _Prompt(text)
+
+    def text(self, message, default="", validate=None, **_kwargs):
+        if validate is not None:
+            result = validate(default or "")
+            if result is not True:
+                raise RuntimeError(str(result))
+        return _Prompt(default or "")
+
+
+class _Prompt:
+    def __init__(self, value):
+        self.value = value
+
+    def ask(self):
+        return self.value
+
+
 class _Spinner:
     """Tiny stderr spinner driven by a daemon thread."""
 
@@ -215,16 +269,19 @@ def interactive() -> int:
         return 1
 
     defaults = _load_defaults()
+    prompter = questionary
+    if not _is_tty() and defaults.get("model") and defaults.get("input_folder"):
+        prompter = _AutoPrompter(defaults, models)
     saved_model = defaults.get("model")
     model_default = saved_model if saved_model in models else None
-    if saved_model and model_default is None:
+    if saved_model and model_default is None and _is_tty():
         print(
             f"Default model {saved_model!r} is not installed; pick another.",
             file=sys.stderr,
         )
 
     model = _ask(
-        questionary.select(
+        prompter.select(
             "Select an Ollama model:",
             choices=models,
             default=model_default,
@@ -236,7 +293,7 @@ def interactive() -> int:
 
     input_default = defaults.get("input_folder", "")
     folder = _ask_path(
-        questionary,
+        prompter,
         "Folder containing WhatsApp .txt/.zip exports",
         input_default,
         partial(_validate_input_folder, default=input_default),
@@ -254,7 +311,7 @@ def interactive() -> int:
         last_date = _last_summary_date(files[0])
         default = last_date.isoformat() if last_date is not None else ""
         answer = _ask(
-            questionary.text(
+            prompter.text(
                 "Summarize from date (YYYY-MM-DD, Enter for all messages):",
                 default=default,
                 validate=_validate_date,
@@ -274,7 +331,7 @@ def interactive() -> int:
 
     output_default = defaults.get("output_folder") or str(input_dir)
     output = _ask_path(
-        questionary,
+        prompter,
         "Output folder for the digest",
         output_default,
         partial(_validate_output_folder, default=output_default),

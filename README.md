@@ -33,10 +33,9 @@ A simple tool to summarize your WhatsApp chats using local AI.
 Open a terminal in the folder where you want this project.
 
 ```bash
-git clone https://github.com/YOUR-REPO-URL.git
-cd chat
+git clone https://github.com/aadityasingh9601/Chat-summarizer.git
+cd Chat-summarizer
 ```
-*(Replace `YOUR-REPO-URL.git` with the actual GitHub repo URL.)*
 
 ### 3) Pull the AI model
 ```bash
@@ -49,6 +48,7 @@ ollama pull qwen3:1.7b
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+playwright install chromium
 ```
 
 **Windows (Command Prompt):**
@@ -56,6 +56,7 @@ pip install -r requirements.txt
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+playwright install chromium
 ```
 
 **Windows (PowerShell):**
@@ -63,7 +64,9 @@ pip install -r requirements.txt
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+playwright install chromium
 ```
+*(Only needed if using Option B auto-export.)*
 
 ### 5) Get your WhatsApp chats
 **Option A: Manual (Recommended, safe)**
@@ -71,9 +74,16 @@ pip install -r requirements.txt
 2. Put those `.txt`/`.zip` files in a folder (e.g. `./exports`).
 
 **Option B: Auto-export (Optional, risky)**
+1. Open `get-whatsapp-chat.py` and edit the `GROUPS` list. Add each group with `"name": "Exact Group Name"` and `"from_date": "YYYY-MM-DD"`.  
+   - `from_date` is **required for the first run only** (used to set the starting point).  
+   - After the first successful export, the script saves progress in `.whatsapp_export_state.json` (local only). Next runs will auto-start from **yesterday+1** so only new messages are exported up to **today**.  
+   - If there's nothing new (already up to date), it will skip that group.  
+   - `to_date` is always **today**. Use the exact group name as shown in WhatsApp Web.
+2. Run it:
 ```bash
 python get-whatsapp-chat.py
 ```
+   - **First time:** A browser window will open to WhatsApp Web. Scan the QR code with your phone to log in. The script will continue once logged in.
 *(Only do this if you understand the ToS risk above.)*
 
 ### 6) Create `.chat_digest_config.json` locally
@@ -121,7 +131,7 @@ crontab -e
 ```bash
 0 21 * * * cd /full/path/to/chat && /full/path/to/chat/venv/bin/python main.py >> /full/path/to/chat/cron.log 2>&1
 ```
-*(If using Ollama locally, ensure Ollama is running or set it to auto-start.)*
+**Note:** Put model, input folder and output folder in `.chat_digest_config.json`. In non-TTY (cron) `main.py` will use those defaults automatically (no Enter needed). If using Ollama locally, ensure Ollama is running or set it to auto-start.
 
 ### Windows (Task Scheduler)
 1. Open **Task Scheduler** → **Create Basic Task**
@@ -132,4 +142,4 @@ crontab -e
    - **Start in:** `C:\full\path\to\chat\`
 4. Save. Windows will run it at that time.
 
-**Tip:** For fully unattended runs, use saved defaults in `.chat_digest_config.json` so prompts don't block.
+**Tip:** For fully unattended runs, use saved defaults in `.chat_digest_config.json` so prompts don't block. `main.py` auto-runs in non-TTY mode when defaults are present.

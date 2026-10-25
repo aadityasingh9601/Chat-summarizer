@@ -41,7 +41,7 @@ def _parse_datetime(value: str):
     raise argparse.ArgumentTypeError(f"invalid datetime: {value}")
 
 
-DEFAULT_MODEL = "qwen3:1.7b"
+DEFAULT_MODEL = "gemma4:e4b"
 DEFAULT_MAX_CHARS = summarize.DEFAULT_MAX_CHARS
 DEFAULT_OVERLAP_CHARS = summarize.DEFAULT_OVERLAP_CHARS
 

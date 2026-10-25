@@ -104,9 +104,9 @@ class HelperTests(unittest.TestCase):
         )
 
     def test_list_models_reads_names_from_response(self) -> None:
-        response = {"models": [{"model": "qwen3:1.7b"}, {"name": "gemma:latest"}]}
+        response = {"models": [{"model": "gemma4:e4b"}, {"name": "gemma:latest"}]}
         with patch("ollama.list", return_value=response):
-            self.assertEqual(main._list_models(), ["qwen3:1.7b", "gemma:latest"])
+            self.assertEqual(main._list_models(), ["gemma4:e4b", "gemma:latest"])
 
 
 class ConfigTests(unittest.TestCase):
@@ -316,10 +316,10 @@ class InteractiveTests(unittest.TestCase):
                 with patch(
                     "main._list_models", return_value=["other", "test-model"]
                 ), patch("main.call_ollama", side_effect=fake_ollama), patch(
-                    "questionary.select", side_effect=select_prompt
-                ), patch("questionary.path", side_effect=path_prompt), patch(
-                    "questionary.text", return_value=Prompt("")
-                ):
+                    "main._is_tty", return_value=True
+                ), patch("questionary.select", side_effect=select_prompt), patch(
+                    "questionary.path", side_effect=path_prompt
+                ), patch("questionary.text", return_value=Prompt("")):
                     with redirect_stdout(io.StringIO()), redirect_stderr(
                         io.StringIO()
                     ) as err:
@@ -366,8 +366,8 @@ class InteractiveTests(unittest.TestCase):
                 with patch(
                     "main._list_models", return_value=["test-model"]
                 ), patch("main.call_ollama", side_effect=fake_ollama), patch(
-                    "questionary.select", return_value=Prompt("test-model")
-                ), patch(
+                    "main._is_tty", return_value=True
+                ), patch("questionary.select", return_value=Prompt("test-model")), patch(
                     "questionary.path", side_effect=lambda *a, **k: Prompt(next(paths))
                 ), patch("questionary.text", return_value=Prompt("")):
                     with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -414,10 +414,10 @@ class InteractiveTests(unittest.TestCase):
                 with patch(
                     "main._list_models", return_value=["test-model"]
                 ), patch("main.call_ollama", side_effect=fake_ollama), patch(
-                    "questionary.select", side_effect=select_prompt
-                ), patch("questionary.path", return_value=Prompt("")), patch(
-                    "questionary.text", return_value=Prompt("")
-                ):
+                    "main._is_tty", return_value=True
+                ), patch("questionary.select", side_effect=select_prompt), patch(
+                    "questionary.path", return_value=Prompt("")
+                ), patch("questionary.text", return_value=Prompt("")):
                     with redirect_stdout(io.StringIO()), redirect_stderr(
                         io.StringIO()
                     ) as err:

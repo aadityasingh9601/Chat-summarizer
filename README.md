@@ -39,7 +39,7 @@ cd Chat-summarizer
 
 ### 3) Pull the AI model
 ```bash
-ollama pull qwen3:1.7b
+ollama pull gemma4:e4b
 ```
 
 ### 4) Create a virtual environment & install requirements
@@ -91,13 +91,13 @@ Create this file in the `chat/` folder (`.chat_digest_config.json`). **This file
 ```json
 {
   "_comment": "Edit manually. Leave empty to be asked each time. This is local only.",
-  "model": "qwen3:1.7b",
+  "model": "gemma4:e4b",
   "input_folder": "./exports",
   "output_folder": "./summaries"
 }
 ```
 
-**Purpose:** Sets your default model + folders so `main.py` asks less.
+**Note:** `gemma4:e4b` is the default. For lower-end machines, you can also use `qwen3:4b`, `qwen3:1.7b`, or `qwen3:0.6b` instead. Pull them with `ollama pull <model>` and set in `.chat_digest_config.json`.
 
 ### 7) Run the summarizer
 Make sure Ollama is running, your venv is activated, and you're inside the `chat/` folder.

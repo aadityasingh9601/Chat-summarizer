@@ -263,7 +263,7 @@ def interactive() -> int:
         return 1
     if not models:
         print(
-            "No Ollama models found. Pull one first (for example: ollama pull qwen3:1.7b).",
+            "No Ollama models found. Pull one first (for example: ollama pull gemma4:e4b).",
             file=sys.stderr,
         )
         return 1
